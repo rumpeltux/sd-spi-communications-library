@@ -29,6 +29,7 @@ uint8_t sd_spi_dirty_write = 0;
 /* An sd_spi_card_t structure for internal state. */
 static sd_spi_card_t card;
 
+#if defined(SD_SPI_BUFFER)
 /**
 @brief		Clears the buffer and sets the values to 0.
 
@@ -40,6 +41,7 @@ static void
 sd_spi_clear_buffer(
 	void
 );
+#endif
 
 /**
 @brief		Performs the direct write to the card.
@@ -177,8 +179,7 @@ sd_spi_init(
 
 #if defined(SD_SPI_BUFFER)
 	card.buffered_block_address = 0;
-	card.is_buffer_current = 0;
-	card.is_buffer_written = 1;
+	sd_spi_clear_buffer();
 #endif
 
   	sd_spi_pin_mode(chip_select_pin, OUTPUT);
@@ -311,11 +312,6 @@ sd_spi_init(
     {
     	sd_spi_unselect_card();
     	return SD_ERR_SETTING_BLOCK_LENGTH;
-    }
-
-    for (i = 0; i < 512; i++)
-    {
-    	card.sd_spi_buffer[i] = 0;
     }
 
 	card.spi_speed = 1;
@@ -1043,6 +1039,7 @@ sd_spi_card_type(
 	return card.card_type;
 }
 
+#if defined(SD_SPI_BUFFER)
 uint32_t
 sd_spi_current_buffered_block(
 		void
@@ -1050,13 +1047,14 @@ sd_spi_current_buffered_block(
 {
 	return card.buffered_block_address;
 }
+#endif
 
+#if defined(SD_SPI_BUFFER)
 static void
 sd_spi_clear_buffer(
 	void
 )
 {
-#if defined(SD_SPI_BUFFER)
 	uint16_t i;
 	for (i = 0; i < 512; i++) {
 		card.sd_spi_buffer[i] = 0;
@@ -1064,8 +1062,8 @@ sd_spi_clear_buffer(
 
 	card.is_buffer_written = 0;
 	card.is_buffer_current = 0;
-#endif
 }
+#endif
 
 static int8_t
 sd_spi_write_out_data(

@@ -56,7 +56,7 @@ extern "C" {
 #include "sd_spi_commands.h"
 
 /** Define to enable the block buffer. */
-#define SD_SPI_BUFFER
+// #define SD_SPI_BUFFER
 
 /** State variables used by the SD raw library. */
 typedef struct sd_spi_card {
