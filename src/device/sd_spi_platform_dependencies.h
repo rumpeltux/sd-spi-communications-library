@@ -88,6 +88,13 @@ sd_spi_receive_byte(
 	void
 );
 
+// TX a whole block of data. No limitations on size.
+// Blocks until transmission finished (yields to other tasks while doing so).
+void sd_spi_send_block(const void *data, uint32_t size);
+
+// If data is NULL, will discard any data that’s read.
+void sd_spi_read_block(void *data, uint32_t size);
+
 #if defined(__cplusplus)
 }
 #endif

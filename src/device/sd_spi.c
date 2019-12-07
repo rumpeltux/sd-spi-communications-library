@@ -190,11 +190,7 @@ sd_spi_init(
 
 	/* Send at least 74 clock pulses to enter the native operating mode
 	   (80 in this case). */
-	uint16_t i;
-  	for (i = 0; i < 10; i++)
-  	{
-  		sd_spi_send_byte(0xFF);
-  	}
+	sd_spi_send_block("\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff", 10);
 	
   	sd_spi_end_transaction();
 
@@ -270,9 +266,7 @@ sd_spi_init(
 		}
 
 		/* Discard rest of OCR. */
-		sd_spi_receive_byte();
-		sd_spi_receive_byte();
-		sd_spi_receive_byte();
+		sd_spi_read_block(NULL, 3);
         printf("ocr discarded\n");
 	}
 	else
@@ -333,6 +327,12 @@ sd_spi_write(
 	{
 		return SD_ERR_WRITE_OUTSIDE_OF_BLOCK;
 	}
+	if (byte_offset != 0) {
+      return SD_ERR_WRITE_OUTSIDE_OF_BLOCK;
+    }
+    if (number_of_bytes != 512) {
+      return SD_ERR_WRITE_OUTSIDE_OF_BLOCK;
+    }
 
 #if defined(SD_SPI_BUFFER)
 	/* Write a whole block out if it is 512 bytes, otherwise read block into
@@ -881,6 +881,8 @@ sd_spi_read_cid_register(
 			return sd_spi_card_status();
 	    }
 	}
+	
+	// TODO: use block reads here.
 
     /* See SD Specifications for more information. */
 	cid->mid = sd_spi_receive_byte();
@@ -1073,6 +1075,9 @@ sd_spi_write_out_data(
 	uint16_t 	byte_offset
 )
 {
+    if (number_of_bytes % 512 != 0 || byte_offset != 0) {
+      return SD_ERR_ARGUMENT_OUT_OF_RANGE;
+    }
 	sd_spi_select_card();
 
 	if (card.is_read_write_continuous)
@@ -1107,25 +1112,7 @@ sd_spi_write_out_data(
 		sd_spi_send_byte(SD_TOKEN_START_BLOCK);
 	}
 
-	uint16_t i;
-
-	/* Pad data with 0. */
-	for (i = 0; i < byte_offset; i++)
-	{
-		sd_spi_send_byte(0);
-	}
-
-	/* Write block. */
-	for (i = byte_offset; i < byte_offset + number_of_bytes; i++)
-	{
-		sd_spi_send_byte(((uint8_t *) data)[i - byte_offset]);
-	}
-
-	/* Pad data with 0. */
-	for (i = byte_offset + number_of_bytes; i < 512; i++)
-	{
-		sd_spi_send_byte(0);
-	}	
+    sd_spi_send_block(data, number_of_bytes);
 
 	/* Send dummy CRC. */
 	sd_spi_send_byte(0xFF);
@@ -1174,6 +1161,9 @@ sd_spi_read_in_data(
 	uint16_t 	byte_offset
 )
 {
+    if (number_of_bytes % 512 != 0 || byte_offset != 0) {
+      return SD_ERR_ARGUMENT_OUT_OF_RANGE;
+    }
 	sd_spi_select_card();
 
 	if (!card.is_read_write_continuous)
@@ -1204,14 +1194,9 @@ sd_spi_read_in_data(
 	    }
 	}
 
-	uint16_t i;
-
 #if defined(SD_SPI_BUFFER)	/* Read block into sd_spi_buffer if it is defined. */
 	/* Read in the bytes to the buffer. */
-	for (i = 0; i < 512; i++)
-	{
-		card.sd_spi_buffer[i] = sd_spi_receive_byte();
-	}
+    sd_spi_read_block(card.sd_spi_buffer, 512);
 
 	/* Throw out CRC. */
 	sd_spi_receive_byte();
@@ -1234,23 +1219,10 @@ sd_spi_read_in_data(
 
 	card.is_buffer_current = 1;
 #else
-    /* Throw out the bytes until the offset is reached. */
-	for (i = 0; i < byte_offset; i++)
-	{
-		sd_spi_receive_byte();
-	}
-
-	/* Read in the bytes to the buffer. */
-	for (i = 0; i < number_of_bytes; i++)
-	{
-		((uint8_t *) data_buffer)[i] = sd_spi_receive_byte();
-	}
-
-	/* Throw out any remaining bytes in the page plus CRC. */
-    for (i = 0; number_of_bytes + byte_offset + i < 514; i++)
-    {
-    	sd_spi_receive_byte();
-    }
+    sd_spi_read_block(data_buffer, number_of_bytes);
+    // Read the CRC
+    uint16_t crc;
+    sd_spi_read_block(&crc, 2);
 #endif
 
 	return SD_ERR_OK;
@@ -1263,32 +1235,35 @@ sd_spi_send_byte_command(
 )
 {
 	sd_spi_select_card();
-	sd_spi_receive_byte();
+    sd_spi_receive_byte();
+    uint8_t packet[6];
 
 	/* Send command with transmission bit. */
-	sd_spi_send_byte(0x40 | command);
+	packet[0] = 0x40 | command;
 
 	/* Send argument. */
-	sd_spi_send_byte(argument >> 24);
-	sd_spi_send_byte(argument >> 16);
-	sd_spi_send_byte(argument >> 8);
-	sd_spi_send_byte(argument >> 0);
+	packet[1] = (argument >> 24);
+	packet[2] = (argument >> 16);
+	packet[3] = (argument >> 8);
+	packet[4] = (argument >> 0);
 
 	/* Send CRC. */
 	switch(command)
 	{
 		/* CRC for CMD0 with arg 0. */
 		case SD_CMD_GO_IDLE_STATE: 
-			sd_spi_send_byte(0x95);
+			packet[5] = 0x95;
 			break; 
 		/* CRC for CMD8 with arg 0X1AA. */
 		case SD_CMD_SEND_IF_COND:
-			sd_spi_send_byte(0x87);
+			packet[5] = 0x87;
 			break; 
 		default:
-			sd_spi_send_byte(0xFF);
+			packet[5] = 0xFF;
 			break;
 	}
+
+	sd_spi_send_block(packet, 6);
 
 	/* Wait for response. Can take up to 64 clock cycles. */
 	uint8_t i;
@@ -1455,9 +1430,9 @@ sd_spi_unselect_card(
 	void
 )
 {
+	/* Host has to wait 8 clock cycles after a command. */
 	sd_spi_receive_byte();
 
-	/* Host has to wait 8 clock cycles after a command. */
 	sd_spi_digital_write(card.chip_select_pin, HIGH);
 
 	if (!card.is_chip_select_high)
