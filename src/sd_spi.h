@@ -94,10 +94,10 @@ typedef struct sd_spi_card {
                             a task if a failure occurs.
 @{
 */
-#define SD_INIT_TIMEOUT		5000
-#define SD_WRITE_TIMEOUT	5000
-#define SD_READ_TIMEOUT		5000
-#define SD_ERASE_TIMEOUT	500000
+#define SD_INIT_TIMEOUT		500
+#define SD_WRITE_TIMEOUT	500
+#define SD_READ_TIMEOUT		500
+#define SD_ERASE_TIMEOUT	5000
 
 /** @} End of group sd_spi_timeouts */
 
