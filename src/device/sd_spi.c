@@ -22,6 +22,7 @@
 
 #include "sd_spi_platform_dependencies.h"
 #include "../sd_spi.h"
+#include <stdio.h>
 
 uint8_t sd_spi_dirty_write = 0;
 
@@ -202,6 +203,7 @@ sd_spi_init(
 	/* Send CMD0 to put card in SPI mode. The card will respond with 0x01. */
 	while (sd_spi_send_byte_command(SD_CMD_GO_IDLE_STATE, 0) != SD_IN_IDLE_STATE)
 	{
+        printf("a) %d vs %d\n", sd_spi_millis(), init_start_time);
 		if (((uint16_t) sd_spi_millis() - init_start_time) > SD_INIT_TIMEOUT)
 		{
 			sd_spi_unselect_card();
@@ -241,8 +243,10 @@ sd_spi_init(
   	/* Initialize card. */
 	if (card.card_type == SD_CARD_TYPE_SD2)
 	{
+        printf("card type: sd2\n");
 		while (spi_send_byte_app_command(SD_ACMD_SEND_OP_COND, 0x40000000) != 0)
 		{
+            printf("b) %d vs %d\n", sd_spi_millis(), init_start_time);
 			if (((uint16_t) sd_spi_millis() - init_start_time) > SD_INIT_TIMEOUT)
 			{
 				sd_spi_unselect_card();
@@ -256,6 +260,8 @@ sd_spi_init(
 			sd_spi_unselect_card();
 			return SD_ERR_OCR_REGISTER;
     	}
+    	
+    	printf("sd2: ocr done\n");
 
 		if ((sd_spi_receive_byte() & 0x40) != 0)
 		{
@@ -266,9 +272,11 @@ sd_spi_init(
 		sd_spi_receive_byte();
 		sd_spi_receive_byte();
 		sd_spi_receive_byte();
+        printf("ocr discarded\n");
 	}
 	else
 	{
+        printf("card type: other\n");
 		/* Send AMCD41 to try initializing card and if card doesn't support this
 		   command, it is most likely of type MMC or an earlier version of SD. */
 		while (spi_send_byte_app_command(SD_ACMD_SEND_OP_COND, 0) != 0)
@@ -1296,7 +1304,7 @@ sd_spi_send_byte_command(
 			break;
 		}
 	}
-
+	printf("  cmd[%02x](0x%x) => %02x\n", command, argument, response);
 	return response;
 }
 
