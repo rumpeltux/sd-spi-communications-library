@@ -36,7 +36,7 @@ sd_spi_begin(
 
 void
 sd_spi_begin_transaction(
-	uint32_t transfer_speed_hz
+	int high_speed
 )
 {
 

@@ -67,9 +67,10 @@ sd_spi_begin(
 	void
 );
 
+// If high_speed is set, use 20/25 MHz. If unset, use 100-400kHz
 void
 sd_spi_begin_transaction(
-	uint32_t transfer_speed_hz
+	int high_speed
 );
 
 void

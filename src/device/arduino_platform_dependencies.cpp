@@ -60,10 +60,10 @@ sd_spi_begin(
 
 void
 sd_spi_begin_transaction(
-	uint32_t transfer_speed_hz
+	int high_speed
 )
 {
-	SPI.beginTransaction(SPISettings(transfer_speed_hz, MSBFIRST, SPI_MODE0));
+	SPI.beginTransaction(SPISettings(high_speed ? 25000000 : 250000, MSBFIRST, SPI_MODE0));
 }
 
 void

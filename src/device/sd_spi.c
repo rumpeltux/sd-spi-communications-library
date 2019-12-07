@@ -184,7 +184,7 @@ sd_spi_init(
   	sd_spi_digital_write(chip_select_pin, HIGH);
 
   	sd_spi_begin();
-	sd_spi_begin_transaction(250000);
+	sd_spi_begin_transaction(/*high_speed=*/0);
 
 	/* Send at least 74 clock pulses to enter the native operating mode
 	   (80 in this case). */
@@ -1434,12 +1434,12 @@ sd_spi_select_card(
 
     	if (card.spi_speed == 0)
     	{
-    		sd_spi_begin_transaction(250000);
+    		sd_spi_begin_transaction(/*high_speed=*/0);
     		
     	}
     	else
     	{
-    		sd_spi_begin_transaction(25000000);
+    		sd_spi_begin_transaction(/*high_speed=*/1);
     	}
 	}
 }
